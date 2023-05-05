@@ -1,20 +1,32 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy 
-#from scipy import odr
 from scipy.optimize import curve_fit
 from scipy.stats import chi2 as chi
 from scipy.stats import pearsonr 
 
+
+def apri(file):
+    with open(file) as f:
+        arr=[int(item,16) for item in f.readlines()]
+    return np.array(arr)
+
+    
+
+
 #FUNZIONE CHE FA LA CALIBRAZIONE PER UNA SORGENTE; RESTITUISCE PLOT, CANALE E LARGHEZZA DEL PICCO
 def calibrazione(file, inf, sup, sorgente):
+    '''
     with open(file) as f:
         new_file = open("new_file.txt", "w")
         for item in f.readlines():
             new_file.write(str(int(item, 16)) + "\n")
         new_file.close()
-
-    e=np.loadtxt("new_file.txt", unpack=True)
+    '''
+   
+    e=apri(file)
+     
+    
     ex=np.array(e)
 
     if (sorgente == "americio"):
