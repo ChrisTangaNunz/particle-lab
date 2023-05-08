@@ -5,49 +5,37 @@ from scipy.optimize import curve_fit
 from scipy.stats import chi2 as chi
 from scipy.stats import pearsonr 
 
-
+#FUNZIONE CHE TI APRE UN FILE, TI CONVERTE I DATI DA ESADECIMALI A DECIMALI E, INFINE, TI RESTITUISCE UN VETTORE arr
 def apri(file):
     with open(file) as f:
         arr=[int(item,16) for item in f.readlines()]
     return np.array(arr)
 
-    
+#FIT EQUATION
+def gaus(X,C,mean,sigma):
+    return C*np.exp(-(X-mean)**2/(2*sigma**2))    
 
-
-#FUNZIONE CHE FA LA CALIBRAZIONE PER UNA SORGENTE; RESTITUISCE PLOT, CANALE E LARGHEZZA DEL PICCO
-def calibrazione(file, inf, sup, sorgente):
-    '''
-    with open(file) as f:
-        new_file = open("new_file.txt", "w")
-        for item in f.readlines():
-            new_file.write(str(int(item, 16)) + "\n")
-        new_file.close()
-    '''
-   
+def clean_data(file,inf,sup,sorgente):
     e=apri(file)
-     
+    minimo=min(e)
+    massimo=max(e) 
     
-    ex=np.array(e)
 
     if (sorgente == "americio"):
         binstot = 2000
     else:
         binstot = 500
 
-    fitinf = inf
-    fitsup = sup
+    e=e[e>inf]
+    e=e[e<sup]
 
+    #(Differenza tra massimo e minimo del vettore complpeto) / (il numero dei bin totali) = (Differenza tra massimo e minimo del vettore selezionato) / (il numero dei bin da determinare, ossia binsfit)
+    R = (massimo - minimo) / binstot 
+    binsfit = round((sup - inf) / R)
 
-    ex=ex[ex>fitinf]
-    ex=ex[ex<fitsup]
-
-
-    R = (max(e) - min(e)) / binstot 
-    binsfit = round((fitsup - fitinf) / R)
-
-    a=np.histogram(ex, bins=binsfit)
+    a=np.histogram(e, bins=binsfit)
     tops=a[0] #y data
-    d_tops=np.sqrt(a[0])
+    d_tops=np.sqrt(a[0]) #errore sulle y, ossia errore di una possoniana
     bin_edges=a[1]
     bin_centers=list() #x data
     for i in range(len(tops)):
@@ -61,14 +49,12 @@ def calibrazione(file, inf, sup, sorgente):
         d_bin.append(d)
 
 
-    #FIT EQUATION
-    def gaus(X,C,mean,sigma):
-        return C*np.exp(-(X-mean)**2/(2*sigma**2))
 
-    mean=np.mean(ex)
-    varianza=np.var(ex)
+
+    mean=np.mean(e)
+    varianza=np.var(e)
     sigma=np.sqrt(varianza)
-    ampiezza = np.max(ex)
+    ampiezza = np.max(e)
 
     
     y=[] #ARRAY WITHOUTH ZEROES ELEMENTS
@@ -83,63 +69,84 @@ def calibrazione(file, inf, sup, sorgente):
             dy.append(d_tops[i])
         
     y=np.array(y)
-
     E=np.array(E)
 
     dy=np.array(dy)
     dE=np.array(dE)
+    initParams=np.array([ampiezza,mean,sigma])
 
+    return y,E,dy,dE,initParams
+
+
+#FUNZIONE CHE FA LA CALIBRAZIONE PER UNA SORGENTE; RESTITUISCE PLOT, CANALE E LARGHEZZA DEL PICCO
+def best_fit(file, inf, sup, sorgente):
+    """return optimal parameters for the fit
+
+    Args:
+        file (path): path of the file
+        inf (float): lowest extremum of the fit funciton
+        sup (float): the highest extremum of the fit funtion
+        sorgente (str): name of the source
+
+    Returns:
+       popt, pcov (np.array): the optimal parameters of the fit
+    """
+    e=apri(file)
+    minimo=min(e)
+    massimo=max(e)
+   
+    y,E,dy,dE,initParams = clean_data(file, inf, sup, sorgente)
 
 
     #FIT
-    initParams=np.array([ampiezza,mean,sigma])
-    fitting_params,cov_matrix = scipy.optimize.curve_fit(gaus,E,y,initParams,dy, absolute_sigma=False)
+    ampiezza,mean,sigma=initParams
+    popt,pcov = scipy.optimize.curve_fit(gaus,E,y,initParams,dy, absolute_sigma=False)
 
 
     # ITERATIVELY UPDATE THE ERRORS AND REFIT.
 
     for i in range(10):  
         dTT=np.sqrt(dy**2+( ((E-mean)/(sigma**2))*ampiezza*np.exp(-((E-mean)**2)/2*(sigma**2))*dE   )**2) 
-        fitting_params, cov_matrix=scipy.optimize.curve_fit(gaus, E, y,initParams , dTT, absolute_sigma=False)
+        popt, pcov=scipy.optimize.curve_fit(gaus, E, y,initParams , dTT, absolute_sigma=False)
+
+    return np.array(popt), np.array(pcov), minimo, massimo
 
 
-
-
-    p_sigma = np.sqrt(np.diag(cov_matrix))
+    p_sigma = np.sqrt(np.diag(pcov))
 
     print('_______________________________')
 
     global media 
-    media = np.append(media, fitting_params[1])
+    media = np.append(media, popt[1])
     
     global err_media 
     err_media = np.append(err_media, p_sigma[1])
 
 
-    print('Media', sorgente, ': ', fitting_params[1])
+    print('Media', sorgente, ': ', popt[1])
     print('Errore media', sorgente, ': ', p_sigma[1])
 
 
     print('_______________________________')
 
     global larghezza 
-    larghezza = np.append(larghezza, fitting_params[2])
+    larghezza = np.append(larghezza, popt[2])
     
     global err_larghezza 
     err_larghezza = np.append(err_larghezza, p_sigma[2])
 
 
-    print('Sigma', sorgente, ': ', fitting_params[2])
+    print('Sigma', sorgente, ': ', popt[2])
     print('Errore sigma', sorgente, ': ', p_sigma[2])
 
-    print("Ampiezza: ", fitting_params[0])
+    print("Ampiezza: ", popt[0])
 
-    z=np.linspace(min(ex), max(ex), 1000)
-    y_output = gaus(z, C=fitting_params[0],mean=fitting_params[1],sigma=fitting_params[2])
+    z=np.linspace(minimo, massimo, 1000)
+    y_output = gaus(z, C=popt[0],mean=popt[1],sigma=popt[2])
 
 
     
-    chisq = ((((y - gaus(E, *fitting_params))**2) / gaus(E, *fitting_params))).sum()
+    chisq = ((((y - gaus(E, *popt))**2) / gaus(E, *popt))).sum()
     print(f'Chisquare = {chisq:.1f}')
     chisq_norm=chisq/(len(y)-3)
     print(chisq_norm)
@@ -167,9 +174,9 @@ def calibrazione(file, inf, sup, sorgente):
     plt.show()
     
     '''
-    return
+    return media, err_media, larghezza, err_larghezza
 
-#FUNZIONE CHE IN BASE AL CANALE DEL PICCO TROVATO E GLI ERRORI ASSOCIATI PER OGNI SORGENTE RESTITUISCE IL PLOT CANALE(E_MeV)
+#FUNZIONE CHE IN BASE AL CANALE DEL PICCO TROVATO (pippo) E GLI ERRORI ASSOCIATI (baudo) PER OGNI SORGENTE RESTITUISCE IL PLOT CANALE(E_MeV)
 def conversione_lin_plot(pippo, baudo):
 
     weights=1/baudo
@@ -237,7 +244,7 @@ def conversione_lin(pippo, baudo):
     energie = np.array([0.060, 0.511, 0.662, 1.173, 1.275, 1.333])
 
     z, cov = np.polyfit(energie, pippo, deg = 1, w = weights, full = False, cov = 'unscaled')
-
+    
     #global conversione
     conversione = z[0]
     #global offset
@@ -408,13 +415,8 @@ def m(picco, energia, err_energia, angolo):
     return me, err_me
 
 def dati_1cal(file, inf, med, sup, angolo):
-    with open(file) as f:
-        new_file = open("new_file.txt", "w")
-        for item in f.readlines():
-            new_file.write(str(int(item, 16)) + "\n")
-        new_file.close()
+    e=apri(file)
 
-    e=np.loadtxt("new_file.txt", unpack=True)
     ex=np.array(e)
 
     binstot = 300
@@ -797,46 +799,3 @@ def dati_1cal(file, inf, med, sup, angolo):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-sorgenti = ["americio", "sodio1", "cesio", "cobalto1", "sodio2", "cobalto2"]
-file = [r"Data\290323\290323_americio2.dat",
-        r"Data\290323\290323_sodio2.dat",
-        r"Data\290323\290323_cesio2.dat",
-        r"Data\290323\290323_cobalto2.dat",
-        r"Data\290323\290323_sodio2.dat",
-        r"Data\290323\290323_cobalto2.dat"]
-inf = np.array([286, 2565, 3331, 5820, 6133, 6565])
-sup = np.array([400, 2840, 3800, 6280, 6862, 7020])
-theta = np.radians(22)
-
-media = []
-err_media = []
-
-larghezza = []
-err_larghezza = []
-
-for i in range(6):
-    calibrazione(file[i], inf[i], sup[i], sorgenti[i])
-media = np.array(media)
-err_media = np.array(err_media)
-larghezza = np.array(larghezza)
-err_larghezza = np.array(err_larghezza)
-
-
-
-conversione_lin_plot(media, err_media)
-conversione_quad(media, err_media)
-risoluzione_quad(larghezza, err_larghezza)                                              
-dati_1cal(r"Data\290323\290323_test6(20gradi).dat", 4612, 5349, 5866, theta)

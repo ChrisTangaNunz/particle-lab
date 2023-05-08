@@ -1,0 +1,4 @@
+{
+    "python.linting.mypyEnabled": false,
+    "python.analysis.typeCheckingMode": "off"
+}
