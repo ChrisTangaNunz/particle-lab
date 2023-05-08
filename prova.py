@@ -75,7 +75,7 @@ def clean_data(file,inf,sup,sorgente):
     dE=np.array(dE)
     initParams=np.array([ampiezza,mean,sigma])
 
-    return y,E,dy,dE,initParams
+    return y,E,dy,dE,initParams 
 
 
 #FUNZIONE CHE FA LA CALIBRAZIONE PER UNA SORGENTE; RESTITUISCE PLOT, CANALE E LARGHEZZA DEL PICCO
