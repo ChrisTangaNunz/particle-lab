@@ -13,7 +13,8 @@ def apri(file):
 
 #FIT EQUATION
 def gaus(X,C,mean,sigma):
-    return C*np.exp(-(X-mean)**2/(2*sigma**2))    
+    return C*np.exp(-(X-mean)**2/(2*sigma**2))  
+  
 
 def clean_data(file,inf,sup,sorgente):
     e=apri(file)
