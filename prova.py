@@ -11,10 +11,19 @@ def apri(file):
         arr=[int(item,16) for item in f.readlines()]
     return np.array(arr)
 
+def truncate(n, decimals=0):
+    multiplier = 10 ** decimals
+    return int(n * multiplier) / multiplier
+
 #FIT EQUATION
 def gaus(X,C,mean,sigma):
-    return C*np.exp(-(X-mean)**2/(2*sigma**2))  
-  
+    return C*np.exp(-(X-mean)**2/(2*sigma**2)) 
+
+def gaus2(X,C2,mean2,sigma2):
+    return C2*np.exp(-(X-mean2)**2/(2*sigma2**2)) 
+
+def gaus3(X,C,mean,sigma,C2,mean2,sigma2):
+    return gaus(X,C,mean,sigma)+gaus2(X,C2,mean2,sigma2)
 
 def clean_data(file,inf,sup,sorgente):
     e=apri(file)
@@ -79,6 +88,13 @@ def clean_data(file,inf,sup,sorgente):
     return y,E,dy,dE,initParams 
 
 
+
+
+
+
+
+
+
 #FUNZIONE CHE FA LA CALIBRAZIONE PER UNA SORGENTE; RESTITUISCE PLOT, CANALE E LARGHEZZA DEL PICCO
 def best_fit(file, inf, sup, sorgente):
     """return optimal parameters for the fit
@@ -111,155 +127,6 @@ def best_fit(file, inf, sup, sorgente):
         popt, pcov=scipy.optimize.curve_fit(gaus, E, y,initParams , dTT, absolute_sigma=False)
 
     return np.array(popt), np.array(pcov), minimo, massimo
-
-
-#FUNZIONE CHE IN BASE AL CANALE DEL PICCO TROVATO (pippo) E GLI ERRORI ASSOCIATI (baudo) PER OGNI SORGENTE RESTITUISCE IL PLOT CANALE(E_MeV)
-def conversione_lin_plot(pippo, baudo):
-
-    weights=1/baudo
-
-    energie = np.array([0.060, 0.511, 0.662, 1.173, 1.275, 1.333])
-
-    z, cov = np.polyfit(energie, pippo, deg = 1, w = weights, full = False, cov = 'unscaled')
-
-    #global conversione
-    conversione = z[0]
-    #global offset
-    offset = z[1]
-
-    #global err_conversione
-    err_conversione = np.sqrt(cov[0][0])
-    #global err_offset
-    err_offset = np.sqrt(cov[1][1])
-
-    #global correlazione_conv_off
-    correlazione_conv_off = cov[0][1]
-
-    print('_______________________________ \n')
-    print("Il parametro a vale: ", conversione, " +- ", err_conversione)
-    print("Il parametro b vale: ", offset, " +- ", err_offset)
-    print('_______________________________')
-
-    xp = np.linspace(0, 1.5, 1000)
-    yp = xp*conversione + offset
-    
-    chisq = ((((pippo - (conversione*energie + offset))**2 / (conversione*energie + offset)))).sum()
-    print(f'Chisquare = {chisq:.1f}')
-    chisq_norm=chisq/(len(pippo)-3)
-    print(f'Chisquare norm = {chisq_norm:.1f}')
-        
-    plt.title('Calibrazione della scala in energia')
-    plt.xlabel('Energia (MeV)')
-    plt.ylabel('Canali')
-    plt.minorticks_on()
-    plt.xticks(ticks=np.arange(0, 1.5001, step = 0.25))
-    plt.xlim(left=0)
-    plt.xlim(right=1.5)
-    plt.tick_params(axis='both', which='minor')
-    plt.grid(visible=True, which='major')
-    plt.rc('axes', labelsize=10)
-
-
-
-    plt.errorbar(energie, pippo, yerr=baudo, marker = '.', linestyle = '', c='r')
-
-    plt.plot(xp, yp)
-
-    plt.gca().legend(['Fit', 'Dati'])
-
-    #plt.savefig('conv-lin.png', dpi=300, bbox_inches='tight')
-    plt.show()
-    
-
-    return conversione, err_conversione, offset, err_offset, correlazione_conv_off
-
-#FUNZIONE CHE IN BASE AL CANALE DEL PICCO TROVATO E GLI ERRORI ASSOCIATI PER OGNI SORGENTE RESTITUISCE IL VALORE DI CONV, OFFSET, ERRORI E CORR
-def conversione_lin(pippo, baudo):
-
-    weights=1/baudo
-
-    energie = np.array([0.060, 0.511, 0.662, 1.173, 1.275, 1.333])
-
-    z, cov = np.polyfit(energie, pippo, deg = 1, w = weights, full = False, cov = 'unscaled')
-    
-    #global conversione
-    conversione = z[0]
-    #global offset
-    offset = z[1]
-
-    #global err_conversione
-    err_conversione = np.sqrt(cov[0][0])
-    #global err_offset
-    err_offset = np.sqrt(cov[1][1])
-
-    #global correlazione_conv_off
-    correlazione_conv_off = cov[0][1]
-
-    return conversione, err_conversione, offset, err_offset, correlazione_conv_off
-
-def conversione_quad(pippo, baudo):
-
-    weights=1/baudo
-
-    energie = np.array([0.060, 0.511, 0.662, 1.173, 1.275, 1.333])
-
-    z, cov = np.polyfit(energie, pippo, deg = 2, w = weights, full = False, cov = 'unscaled')
-
-    global A
-    A = z[0]
-    global B
-    B = z[1]
-    global C 
-    C= z[2]
-
-    global err_A
-    err_A = np.sqrt(cov[0][0])
-    global err_B
-    err_B = np.sqrt(cov[1][1])
-    global err_C 
-    err_C = np.sqrt(cov[2][2])
-
-    global correlazione_A_B
-    correlazione_A_B = cov[0][1]
-
-    global correlazione_A_C
-    correlazione_A_C = cov[0][2]
-
-    global correlazione_B_C
-    correlazione_B_C = cov[1][2]
-
-    print('_______________________________ \n')
-    print("Il parametro a vale: ", A, " +- ", err_A)
-    print("Il parametro b vale: ", B, " +- ", err_B)
-    print("Il parametro c vale: ", C, " +- ", err_C)
-    print('_______________________________')
-
-    xp = np.linspace(0, 1.5, 1000)
-    yp = xp*xp*A + B*xp + C
-
-    chisq = ((((pippo - (A*energie*energie + B*energie + C))**2 / (A*energie*energie + B*energie + C)))).sum()
-    print(f'Chisquare = {chisq:.1f}')
-    chisq_norm=chisq/(len(pippo)-4)
-    print(f'Chisquare norm = {chisq_norm:.1f}')
-
-
-    plt.title('Calibrazione della scala in energia')
-    plt.xlabel('Energia (MeV)')
-    plt.ylabel('Canali')
-    plt.minorticks_on()
-    plt.xticks(ticks=np.arange(0, 1.5001, step = 0.25))
-    plt.xlim(left=0)
-    plt.xlim(right=1.5)
-    plt.tick_params(axis='both', which='minor')
-    plt.grid(visible=True, which='major')
-    plt.rc('axes', labelsize=10)
-
-
-    plt.plot(xp, yp)
-    plt.errorbar(energie, pippo, yerr=baudo, marker = '.', linestyle = '', c='r')
-    #plt.savefig('conv-quad.png', dpi=300, bbox_inches='tight')
-
-    plt.show()
 
 
 
@@ -381,9 +248,7 @@ def dati_1cal(file, inf, med, sup, angolo):
     plt.legend()
 
 
-    def truncate(n, decimals=0):
-        multiplier = 10 ** decimals
-        return int(n * multiplier) / multiplier
+
         
 
 
