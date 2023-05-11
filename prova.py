@@ -19,11 +19,9 @@ def truncate(n, decimals=0):
 def gaus(X,C,mean,sigma):
     return C*np.exp(-(X-mean)**2/(2*sigma**2)) 
 
-def gaus2(X,C2,mean2,sigma2):
-    return C2*np.exp(-(X-mean2)**2/(2*sigma2**2)) 
 
 def gaus3(X,C,mean,sigma,C2,mean2,sigma2):
-    return gaus(X,C,mean,sigma)+gaus2(X,C2,mean2,sigma2)
+    return gaus(X,C,mean,sigma)+gaus(X,C2,mean2,sigma2)
 
 def clean_data(file,inf,sup,sorgente):
     e=apri(file)
@@ -85,7 +83,7 @@ def clean_data(file,inf,sup,sorgente):
     dE=np.array(dE)
     initParams=np.array([ampiezza,mean,sigma])
 
-    return y,E,dy,dE,initParams 
+    return y,E,dy,dE,initParams,binsfit
 
 
 
@@ -97,7 +95,7 @@ def clean_data(file,inf,sup,sorgente):
 
 #FUNZIONE CHE FA LA CALIBRAZIONE PER UNA SORGENTE; RESTITUISCE PLOT, CANALE E LARGHEZZA DEL PICCO
 def best_fit(file, inf, sup, sorgente):
-    """return optimal parameters for the fit
+    """return optimal parameters for the fit of a gaussian
 
     Args:
         file (path): path of the file
@@ -112,7 +110,7 @@ def best_fit(file, inf, sup, sorgente):
     minimo=min(e)
     massimo=max(e)
    
-    y,E,dy,dE,initParams = clean_data(file, inf, sup, sorgente)
+    y,E,dy,dE,initParams,_ = clean_data(file, inf, sup, sorgente)
 
 
     #FIT
